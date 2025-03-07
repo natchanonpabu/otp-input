@@ -31,14 +31,15 @@ function App() {
     index: number,
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const value = event.target.value;
+    const nativeEvent = event.nativeEvent as InputEvent;
+    const inputType = nativeEvent.inputType;
+    const value = nativeEvent.data;
 
-    console.log("handleChange", index, value);
-
-    if (!/^\d+$/.test(value)) return;
+    if (!/^\d+$/.test(value ?? "")) return;
+    if (inputType === "insertFromPaste") return;
 
     const newOtp = [...otp];
-    newOtp[index] = value[value.length - 1] ? value[value.length - 1] : value;
+    newOtp[index] = value;
     setOtp(newOtp);
 
     // Move focus to the next input field
@@ -71,23 +72,21 @@ function App() {
     }
   };
 
-  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (
+    index: number,
+    event: React.ClipboardEvent<HTMLInputElement>
+  ) => {
     const inputValue: string = event.clipboardData.getData("Text");
-    if (/^\d+$/.test(inputValue)) {
-      const value = inputValue.split("");
-      const newOtp: string[] = [];
+    if (!/^\d+$/.test(inputValue)) return;
 
-      Array.from({ length: 6 }).map((_, index) => {
-        if (value.length > index) {
-          console.log("value", value, value[index]);
-          newOtp[index] = value[index];
-          inputRefs.current[index + 1]?.focus();
-        } else {
-          newOtp[index] = "";
-        }
-        setOtp(newOtp);
-      });
+    const value = inputValue.substring(0, otpLength - index);
+
+    const newOtp = [...otp];
+    for (let i = 0; i < value.length; i++) {
+      newOtp[index + i] = value[i];
+      inputRefs.current[index + i]?.focus();
     }
+    setOtp(newOtp);
   };
 
   return (
@@ -102,10 +101,9 @@ function App() {
             pattern="\d{1}"
             maxLength={1}
             value={digit}
-            // onKeyDown={(event) => handleKeyDown(index, event)}
-            // onPaste={(event) => handlePaste(event)}
-            // onChange={(event) => handleChange(index, event)}
-            onInput={(event) => console.log(event)}
+            onKeyDown={(event) => handleKeyDown(index, event)}
+            onPaste={(event) => handlePaste(index, event)}
+            onChange={(event) => handleChange(index, event)}
             ref={(ref) => {
               inputRefs.current[index] = ref;
               // Set the first input field reference
@@ -113,7 +111,7 @@ function App() {
                 firstInputRef.current = ref;
               }
             }}
-            className="w-[2.875rem] h-[2.875rem] rounded-md bg-base-white text-center text-h1-500 text-primary-kk-50 font-kanit [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-[2.875rem] h-[2.875rem] rounded-md bg-base-white text-center text-h1-500 font-kanit [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             autoComplete="off"
           />
         ))}
