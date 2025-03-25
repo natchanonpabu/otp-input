@@ -1,5 +1,6 @@
 import React from "react";
 import "./App.css";
+import OtpInput from "./otp-input";
 
 function App() {
   const [otp, setOtp] = React.useState(Array(6).fill(""));
@@ -91,7 +92,7 @@ function App() {
 
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center">
-      <div className="w-full max-w-[21.125rem] flex justify-between [&>input]:shadow [&>input]:drop-shadow-md [&>input]:border-0 [&>input]:border-b-2 [&>input]:border-[transparent] [&>input]:rounded-md">
+      {/* <div className="w-full max-w-[21.125rem] flex justify-between [&>input]:shadow [&>input]:drop-shadow-md [&>input]:border-0 [&>input]:border-b-2 [&>input]:border-[transparent] [&>input]:rounded-md">
         {otp.map((digit, index) => (
           <input
             id={`input-otp${index + 1}`}
@@ -116,7 +117,13 @@ function App() {
           />
         ))}
       </div>
-      <div>{otp}</div>
+      <div>{otp}</div> */}
+      input
+      <OtpInput
+        value={otp.join("")}
+        valueLength={6}
+        onChange={(v) => setOtp(v.split(""))}
+      />
     </div>
   );
 }
