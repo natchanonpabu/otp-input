@@ -37,9 +37,9 @@ function App() {
     const otpIndexValue = otp[index];
     const targetEventValue = event.target.value;
 
-    let value = nativeEvent.data ?? event.target.value;
+    let value = nativeEvent.data;
 
-    if (!value && targetEventValue !== "") {
+    if (!value) {
       value = targetEventValue;
 
       const length = value.length;
@@ -53,10 +53,11 @@ function App() {
     }
 
     setLog(
-      `index: ${index}, inputType: ${inputType}, value: ${value}, target.value: ${event.target.value}, nativeEvent.data: ${nativeEvent.data}, otpIndexValue: ${otpIndexValue}`
+      log +
+        `index: ${index}, inputType: ${inputType}, target.value: ${event.target.value}, nativeEvent.data: ${nativeEvent.data}, otpIndexValue: ${otpIndexValue}`
     );
 
-    if (!/^\d+$/.test(value ?? "")) return;
+    if (!/^\d+$/.test(value)) return;
     // if (inputType === "insertFromPaste") return;
 
     if (value.length === 1) {
@@ -70,20 +71,20 @@ function App() {
     } else {
       const newOtp = [...otp];
       let newIndex = index;
-      for (let i = index; i < otp.length; i++) {
-        if (value[i - index]) {
-          newOtp[i] = value[i - index];
+      for (let i = 0; i < otp.length; i++) {
+        if (value[i]) {
+          newOtp[i] = value[i];
           newIndex = i;
+        } else {
+          newOtp[i] = "";
         }
       }
 
       setOtp(newOtp);
-      console.log(newIndex, otp.length - 1);
+
       if (newIndex < otp.length - 1) {
-        console.log(1);
-        return inputRefs.current[newIndex]?.focus();
+        return inputRefs.current[newIndex + 1]?.focus();
       } else {
-        console.log(2);
         return inputRefs.current[index]?.blur();
       }
     }
@@ -161,6 +162,7 @@ function App() {
           />
         ))}
       </div>
+
       <div className="mt-6">OTP: {otp}</div>
       <div className="mt-6">LOG: {log}</div>
     </div>
