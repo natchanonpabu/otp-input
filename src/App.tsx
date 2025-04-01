@@ -1,72 +1,95 @@
 import React from "react";
 import "./App.css";
 
+interface KeyLog {
+  value: string;
+  index: number;
+  key: string;
+}
+
 function App() {
+  const [history, setHistory] = React.useState<KeyLog[]>(
+    Array.from(Array(6).keys()).map((e) => ({ value: "", index: e, key: "" }))
+  );
+  const [activeInput, setActiveInput] = React.useState(0);
   const [otp, setOtp] = React.useState(Array(6).fill(""));
+  const [keyDown, setKeyDown] = React.useState("");
   const [log, setLog] = React.useState("");
 
   const otpLength = React.useMemo(() => otp.length, [otp]);
-
-  // Ref to focus the first input field
-  const firstInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Reference to input elements to manage focus between inputs
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>(
     Array(otpLength).fill(null)
   );
 
-  // Focus on the first input field when the component is mounted
   React.useEffect(() => {
-    setTimeout(() => {
-      firstInputRef.current?.focus();
-    }, 0);
+    inputRefs.current[0]?.focus();
   }, []);
 
-  React.useEffect(() => {
-    if (otp.every((v) => v == "")) {
-      firstInputRef.current?.focus();
-    }
-  }, [otp]);
+  const isInputValueValid = (value: string) => {
+    return /^\d+$/.test(value);
+  };
 
-  const handleChange = (
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>
+  const onChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    index: number
   ) => {
-    const nativeEvent = event.nativeEvent as InputEvent;
-    const inputType = nativeEvent.inputType;
+    console.log("onchange");
     const otpIndexValue = otp[index];
-    const targetEventValue = event.target.value;
 
-    let value = nativeEvent.data;
+    const nativeEvent = event.nativeEvent as InputEvent;
 
-    if (!value) {
-      value = targetEventValue;
+    const nativeData = nativeEvent.data;
+    const targetValue = event.target.value;
+
+    let value = "";
+
+    if (nativeData) {
+      if (!isInputValueValid(nativeData)) return;
+      value = nativeData;
+    } else {
+      if (!isInputValueValid(targetValue)) return;
+      value = targetValue;
 
       const length = value.length;
       if (length > 1) {
-        const diff = value
-          .split("")
-          .filter((char) => !otpIndexValue.includes(char))
-          .join("");
-        value = diff;
+        const arr = value.split("");
+        const diff = arr.filter((char) => !otpIndexValue.includes(char));
+        value = diff.join("");
       }
     }
 
-    setLog(
-      log +
-        `index: ${index}, inputType: ${inputType}, target.value: ${event.target.value}, nativeEvent.data: ${nativeEvent.data}, otpIndexValue: ${otpIndexValue}`
-    );
+    setLog(`${log} |------| ${index} key ${keyDown} value ${value}`);
 
-    if (!/^\d+$/.test(value)) return;
-    // if (inputType === "insertFromPaste") return;
+    let new_history = history;
+    const auto_fill =
+      new_history.find((e) => e.index === 0)?.key !== "Unidentified" &&
+      keyDown === "Unidentified";
+    if (auto_fill) {
+      new_history = new_history.map((e) =>
+        e.index === 0 ? { ...e, value, key: keyDown } : e
+      );
+    } else {
+      new_history = new_history.map((e) =>
+        e.index === index ? { ...e, value, key: keyDown } : e
+      );
+    }
+
+    setHistory(new_history);
 
     if (value.length === 1) {
       const newOtp = [...otp];
-      newOtp[index] = value;
+      if (auto_fill) {
+        newOtp[0] = value;
+      } else {
+        newOtp[index] = value;
+      }
       setOtp(newOtp);
 
+      if (auto_fill) return inputFocus(1);
       if (index < otpLength - 1) {
-        inputRefs.current[index + 1]?.focus();
+        return inputRefs.current[index + 1]?.focus();
       }
     } else {
       const newOtp = [...otp];
@@ -83,57 +106,64 @@ function App() {
       setOtp(newOtp);
 
       if (newIndex < otp.length - 1) {
-        return inputRefs.current[newIndex + 1]?.focus();
+        return inputFocus(newIndex + 1);
       } else {
         return inputRefs.current[index]?.blur();
       }
     }
-    // // Move focus to the next input field
-    // if (index < otpLength - 1) {
-    //   inputRefs.current[index + 1]?.focus();
-    // }
-
-    // // Prevent the default behavior to replace the value as we are handling it
-    // event.preventDefault();
   };
 
-  // Handle key down events
-  const handleKeyDown = (
-    index: number,
-    event: React.KeyboardEvent<HTMLInputElement>
+  const onKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    index: number
   ) => {
-    const key = event.key;
-
-    // Handle backspace
-    if (key === "Backspace") {
-      // Clear the current input field
+    console.log("onkeydown");
+    // setKeyDown(
+    //   `${keyDown} |------| ${index} : code ${event.code}, key ${event.key} type ${event.type}`
+    // );
+    const newOtp = [...otp];
+    setKeyDown(event.key);
+    if ([event.code, event.key].includes("Backspace")) {
+      event.preventDefault();
       const newOtp = [...otp];
       newOtp[index] = "";
       setOtp(newOtp);
-
-      // Move focus to the previous input field if necessary
-      if (index > 0) {
-        inputRefs.current[index - 1]?.focus();
-      }
+      inputFocus(activeInput - 1);
+    } else if (event.code === "Delete") {
+      event.preventDefault();
+      const newOtp = [...otp];
+      newOtp[index] = "";
+      setOtp(newOtp);
+    } else if (event.code === "ArrowLeft") {
+      event.preventDefault();
+      inputFocus(activeInput - 1);
+    } else if (event.code === "ArrowRight") {
+      event.preventDefault();
+      inputFocus(activeInput + 1);
+    }
+    // React does not trigger onChange when the same value is entered
+    // again. So we need to focus the next input manually in this case.
+    else if (event.key === newOtp[activeInput]) {
+      event.preventDefault();
+      inputFocus(activeInput + 1);
+    } else if (
+      event.code === "Space" ||
+      event.code === "Space" ||
+      event.code === "ArrowUp" ||
+      event.code === "ArrowDown"
+    ) {
+      event.preventDefault();
     }
   };
 
-  // const handlePaste = (
-  //   index: number,
-  //   event: React.ClipboardEvent<HTMLInputElement>
-  // ) => {
-  //   const inputValue: string = event.clipboardData.getData("Text");
-  //   if (!/^\d+$/.test(inputValue)) return;
+  const onFocus = (index: number) => {
+    setActiveInput(index);
+  };
 
-  //   const value = inputValue.substring(0, otpLength - index);
-
-  //   const newOtp = [...otp];
-  //   for (let i = 0; i < value.length; i++) {
-  //     newOtp[index + i] = value[i];
-  //     inputRefs.current[index + i]?.focus();
-  //   }
-  //   setOtp(newOtp);
-  // };
+  const inputFocus = (index: number) => {
+    inputRefs.current[index]?.focus();
+    setActiveInput(index);
+  };
 
   return (
     <div className="w-screen h-screen flex flex-col justify-center items-center">
@@ -147,24 +177,27 @@ function App() {
             pattern="\d{1}"
             maxLength={1}
             value={digit}
-            onKeyDown={(event) => handleKeyDown(index, event)}
-            // onPaste={(event) => handlePaste(index, event)}
-            onChange={(event) => handleChange(index, event)}
+            onKeyDown={(event) => onKeyDown(event, index)}
+            onChange={(event) => onChange(event, index)}
+            onFocus={() => onFocus(index)}
             ref={(ref) => {
               inputRefs.current[index] = ref;
-              // Set the first input field reference
-              if (index === 0) {
-                firstInputRef.current = ref;
-              }
             }}
             className="w-[2.875rem] h-[2.875rem] rounded-md bg-base-white text-center text-h1-500 font-kanit [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            autoComplete="one-time-code"
+            autoComplete={!index ? "one-time-code" : "off"}
           />
         ))}
       </div>
 
       <div className="mt-6">OTP: {otp}</div>
-      <div className="mt-6">LOG: {log}</div>
+      <div className="mt-6">
+        Log:{" "}
+        {log.split("|------|").map((e, i) => (
+          <p key={e + i}>{e}</p>
+        ))}
+      </div>
+      <div className="mt-6">KeyDown: {keyDown}</div>
+      <div className="mt-6">History: {JSON.stringify(history)}</div>
     </div>
   );
 }
