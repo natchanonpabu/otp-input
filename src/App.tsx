@@ -36,7 +36,6 @@ function App() {
     index: number
   ) => {
     console.log("onchange");
-    const otpIndexValue = otp[index];
 
     const nativeEvent = event.nativeEvent as InputEvent;
 
@@ -52,10 +51,15 @@ function App() {
       if (!isInputValueValid(targetValue)) return;
       value = targetValue;
 
+      // setLog(
+      //   `${log} |------| ${index} value ${value} otpIndexValue ${otpIndexValue}`
+      // );
+
       const length = value.length;
       if (length > 1) {
         const arr = value.split("");
-        const diff = arr.filter((char) => !otpIndexValue.includes(char));
+        const otpIndexValue = history.find((e) => e.index === index)?.value;
+        const diff = arr.filter((char) => !otpIndexValue?.includes(char));
         value = diff.join("");
       }
     }
@@ -77,6 +81,8 @@ function App() {
     }
 
     setHistory(new_history);
+
+    if (!isInputValueValid(value)) return;
 
     if (value.length === 1) {
       const newOtp = [...otp];
@@ -197,7 +203,12 @@ function App() {
         ))}
       </div>
       <div className="mt-6">KeyDown: {keyDown}</div>
-      <div className="mt-6">History: {JSON.stringify(history)}</div>
+      <div className="mt-6 text-center">
+        History:{" "}
+        {history.map((e, i) => (
+          <p key={i}>{JSON.stringify(e)}</p>
+        ))}
+      </div>
     </div>
   );
 }
